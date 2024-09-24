@@ -5,6 +5,9 @@ from PIL import Image
 import numpy as np
 import os
 
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 bird_wordlist = open('labels.txt', 'r').readlines()
 bird_wordlist = [e.strip() for e in bird_wordlist]
 def load_model():
@@ -31,24 +34,39 @@ def detect_bird(model, img_array):
     
     return False, 0.0
 
-def main():
+
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
+@app.route('/detect', methods=['POST'])
+def detect_bird_route():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+
+    image_file = request.files['image']
+    if image_file.filename == '':
+        return jsonify({'error': 'No selected image file'}), 400
+
+    # Save the uploaded image temporarily
+    temp_path = 'temp_image.jpg'
+    image_file.save(temp_path)
+
+    # Load the model
     model = load_model()
-    
-    # Replace with the path to your image
-    test_dir = 'birds'
 
-    for e in os.listdir(test_dir):
-        img_path = os.path.join(test_dir, e)
-        img_array = preprocess_image(img_path)
-        
-        print()
-        print(img_path)
-        is_bird, probability = detect_bird(model, img_array)
-    
-        if is_bird:
-            print(f"A bird was detected in the image with {probability:.2%} confidence.")
-        else:
-            print("No bird was detected in the image.")
+    # Preprocess the image
+    img_array = preprocess_image(temp_path)
 
-if __name__ == "__main__":
-    main()
+    # Detect bird
+    is_bird, probability = detect_bird(model, img_array)
+
+    # Remove the temporary image file
+    os.remove(temp_path)
+
+    return jsonify({
+        'is_bird': is_bird,
+        'probability': float(probability)
+    })
+
+if __name__ == '__main__':
+    app.run(debug=True, port=9001)
