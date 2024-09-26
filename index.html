@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Birdwatching Webcam (1 FPS)</title>
+    <title>Teal Gardens Birdcam</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,7 +16,7 @@
             min-height: 100vh;
         }
         .container {
-            width: 100%;
+            width: 800px;
             text-align: center;
             background-color: white;
             padding: 20px;
@@ -32,11 +32,26 @@
             border: 2px solid #ddd;
             border-radius: 5px;
         }
+        #detectionResult {
+            margin-top: 10px;
+        }
+        #detectionDetail span {
+            color: #555;
+        }
+        .bird-detected {
+            color: green;
+        }
+        .no-bird {
+            color: red;
+        }
+        .error {
+            color: red;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>LIVE birdcam</h1>
+        <h1>Teal Gardens Birdcam</h1>
         <img id="imageElement" alt="Webcam stream">
         <p id="detectionResult">Waiting for detection...</p>
     </div>

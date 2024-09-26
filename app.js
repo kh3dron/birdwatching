@@ -5,55 +5,68 @@ const detectionResultElement = document.getElementById('detectionResult');
 if (!imageElement || !detectionResultElement) {
     console.error("Required HTML elements are missing");
 }
-let stream;
-let videoTrack;
 
-async function startWebcam() {
+async function detectBird() {
     try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoTrack = stream.getVideoTracks()[0];
-        captureAndDisplayImage();
+        const result = await GetImage();
+        updateDetectionResult(result);
+        displayImage(result.image_data);
     } catch (err) {
-        console.error("Error accessing the webcam:", err);
+        console.error("Error detecting bird:", err);
+        updateDetectionResult(null, err);
+    } finally {
+        setTimeout(detectBird, 500);
     }
 }
 
-async function captureAndDisplayImage() {
-    const imageCapture = new ImageCapture(videoTrack);
-    
-    try {
-        const blob = await imageCapture.takePhoto();
-        const imageUrl = URL.createObjectURL(blob);
-        imageElement.src = imageUrl;
-        
-        // Send image to detector API
-        const detectionResult = await sendImageToDetector(blob);
-        if (detectionResultElement) {
-            detectionResultElement.textContent = detectionResult ? "Bird detected!" : "No bird detected.";
+function updateDetectionResult(result, error = null) {
+    if (detectionResultElement) {
+        if (error) {
+            detectionResultElement.innerHTML = `<h2 class="error">Error detecting bird: ${error.message}</h2>`;
+        } else {
+            const isBird = result.is_bird;
+            const statusClass = isBird ? 'bird-detected' : 'no-bird';
+            const statusText = isBird ? 'Bird detected!' : 'No bird detected';
+
+            detectionResultElement.innerHTML = `
+                <h2 class="detection-status ${statusClass}">${statusText}</h2>
+                <div class="detection-details">
+                    <h3>Detected: ${result.label}</h3>
+                    <h3>Probability: ${(result.probability * 100).toFixed(2)}%</h3>
+                </div>
+            `;
         }
-    } catch (err) {
-        console.error("Error capturing image:", err);
     }
-
-    // Schedule the next capture after 1 second
-    setTimeout(captureAndDisplayImage, 1000);
 }
 
-async function sendImageToDetector(imageBlob) {
-    const formData = new FormData();
-    formData.append('image', imageBlob, 'image.jpg');
+function displayImage(imageData) {
+    if (imageElement) {
+        if (imageData) {
+            imageElement.src = `data:image/jpeg;base64,${imageData}`;
+            imageElement.style.display = 'block';
+        } else {
+            console.warn('No image data received');
+            imageElement.style.display = 'none';
+        }
+    } else {
+        console.error('Image element not found');
+    }
+}
 
+async function GetImage() {
     try {
-        const response = await fetch('http://localhost:9001/detect', {
-            method: 'POST',
-            body: formData
+        const response = await fetch('http://huey:9111/detect', {
+            method: 'GET',
+            cache: 'no-store'
         });
+
         const result = await response.json();
-        return result.bird_detected;
+        return result;
     } catch (error) {
-        console.error('Error sending image to detector:', error);
-        return false;
+        console.error('Error accessing the webcam or sending image to detector:', error);
+        throw error;
     }
 }
 
-startWebcam();
+// Start the detection process
+detectBird();
