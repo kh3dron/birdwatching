@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bird Detection API Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        #results {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <img id="apiImage" src="" alt="Webcam Image">
+    <div id="results"></div>
+    <p id="errorMessage" style="color: red;"></p>
+
+    <script>
+        function updateData() {
+            fetch('/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received data:', data);  // Log received data
+                    if (data.image_data) {
+                        document.getElementById('apiImage').src = `data:image/jpeg;base64,${data.image_data}`;
+                        document.getElementById('apiImage').style.display = 'block';
+                    } else {
+                        console.error('No image data in the response');
+                        document.getElementById('apiImage').style.display = 'none';
+                    }
+                    
+                    const resultsHtml = `
+                        <p>Is Bird: ${data.is_bird ? 'Yes' : 'No'}</p>
+                        <p>Probability: ${(data.probability * 100).toFixed(2)}%</p>
+                        <p>Label: ${data.label}</p>
+                    `;
+                    document.getElementById('results').innerHTML = resultsHtml;
+                    document.getElementById('errorMessage').textContent = '';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('errorMessage').textContent = 'Failed to fetch data';
+                });
+        }
+
+        // Update data immediately and then every 3 seconds
+        updateData();
+        setInterval(updateData, 3000);
+    </script>
+</body>
+</html>

@@ -2,3 +2,5 @@ myenv/
 
 # test data
 birds/
+
+node_modules/

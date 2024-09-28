@@ -1,5 +1,0 @@
-tensorflow
-pillow
-flask
-flask-cors
-opencv-python
