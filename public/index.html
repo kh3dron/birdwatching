@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bird Detection API Display</title>
+    <div id="currentTime"></div>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,6 +32,16 @@
     <p id="errorMessage" style="color: red;"></p>
 
     <script>
+
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('currentTime').textContent = `Current Time: ${timeString}`;
+        }
+
+        updateTime();
+        setInterval(updateTime, 1000);
+
         function updateData() {
             fetch('/api/data')
                 .then(response => response.json())
@@ -44,9 +56,8 @@
                     }
                     
                     const resultsHtml = `
-                        <p>Is Bird: ${data.is_bird ? 'Yes' : 'No'}</p>
-                        <p>Probability: ${(data.probability * 100).toFixed(2)}%</p>
-                        <p>Label: ${data.label}</p>
+                        <p>BIRD: ${data.is_bird ? 'Yes' : 'No'}</p>
+                        <p>Detecting: ${data.label} with a probability of ${(data.probability * 100).toFixed(2)}%</p>
                     `;
                     document.getElementById('results').innerHTML = resultsHtml;
                     document.getElementById('errorMessage').textContent = '';
@@ -57,9 +68,8 @@
                 });
         }
 
-        // Update data immediately and then every 3 seconds
         updateData();
-        setInterval(updateData, 3000);
+        setInterval(updateData, 2000);
     </script>
 </body>
 </html>

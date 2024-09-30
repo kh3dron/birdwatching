@@ -4,3 +4,5 @@ myenv/
 birds/
 
 node_modules/
+*.out
+*.log

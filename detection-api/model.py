@@ -1,3 +1,4 @@
+import time
 import tensorflow as tf
 from tensorflow.keras.applications.inception_v3 import (
     InceptionV3,
@@ -74,6 +75,9 @@ def detect_bird_route():
         )
 
     ret, frame = cap.read()
+    brightness = .9
+    frame = cv2.convertScaleAbs(frame, alpha=brightness, beta=0)
+    
     if not ret:
         return jsonify({"error": "Failed to capture image from webcam."}), 500
 
@@ -95,6 +99,13 @@ def detect_bird_route():
     # Remove the temporary image file
     # os.remove("webcam_photo.jpg")
     print("[*] Inference complete")
+    
+    if is_bird:
+        filename = time.strftime("%Y%m%d-%H%M%S") + ".jpg"
+        with open(filename, "wb") as image_file:
+            image_file.write(image_data)
+        
+    
     return jsonify(
         {
             "is_bird": is_bird,
