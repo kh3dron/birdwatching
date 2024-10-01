@@ -1,4 +1,5 @@
 import time
+import json
 import tensorflow as tf
 from tensorflow.keras.applications.inception_v3 import (
     InceptionV3,
@@ -11,36 +12,29 @@ import numpy as np
 import os
 import cv2
 import base64
+import logging
+import datetime
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 bird_wordlist = open("labels.txt", "r").readlines()
 bird_wordlist = [e.strip() for e in bird_wordlist]
 
-
-def load_model():
-    # Load pre-trained InceptionV3 model
-    model = InceptionV3(weights="imagenet")
-    return model
-
-
 def preprocess_image(img_path):
-    # Load and preprocess the image
     img = image.load_img(img_path, target_size=(299, 299))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
     img_array = preprocess_input(img_array)
     return img_array
 
-
+# if a bird is in the top 10 predictions, call that a bird predicted
+# false positives are ok for now
 def detect_bird(model, img_array):
-    # Make predictions
     predictions = model.predict(img_array)
     decoded_predictions = decode_predictions(predictions, top=10)[0]
 
     for _, label, probability in decoded_predictions:
-        # print(f"[*] label: {label}, probability: {probability}")
         if label in bird_wordlist:
             print(f"[***] bird detected: {label}")
             return True, probability, label
@@ -48,73 +42,74 @@ def detect_bird(model, img_array):
     most_probable = decoded_predictions[0]
     return False, most_probable[2], most_probable[1]
 
+# take a picture with the webcam, inference, and save accordingly
+def camcheck(model):
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-
-@app.route("/")
-def index():
-    return "A-OK"
-
-@app.route("/detect", methods=["GET"])
-def detect_bird_route():
-    print("[*] Starting inference...")
-    
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        cap.open(0)  # Try to open the camera again
-
-    if not cap.isOpened():
-        return (
-            jsonify(
-                {
-                    "error": "Cannot open webcam. Please check your camera connection and permissions."
-                }
-            ),
-            500,
-        )
-
+        cap.open(0)
+        return
     ret, frame = cap.read()
-    brightness = .9
-    frame = cv2.convertScaleAbs(frame, alpha=brightness, beta=0)
-    
     if not ret:
-        return jsonify({"error": "Failed to capture image from webcam."}), 500
+        logger.error("Failed to capture frame from webcam")
+        return
+    cap.release()
 
-    cv2.imwrite("webcam_photo.jpg", frame)
+    # decrease brightness, helps bright sunlight effect. TODO fix better
+    brightness = 0.9
+    frame = cv2.convertScaleAbs(frame, alpha=brightness, beta=0)
 
-    # Load the model
-    model = load_model()
+    # Add timestamp to the bottom left corner
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cv2.putText(frame, timestamp, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
-    # Preprocess the image
-    img_array = preprocess_image("webcam_photo.jpg")
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    img = Image.fromarray(rgb_frame).resize((299, 299))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = preprocess_input(img_array)
 
-    # Detect bird
+    logger.info("[*] Starting inference...")
     is_bird, probability, label = detect_bird(model, img_array)
+    logger.info("[*] Inference complete")
 
-    # Read the image file and encode it to base64
-    with open("webcam_photo.jpg", "rb") as image_file:
-        image_data = base64.b64encode(image_file.read()).decode("utf-8")
+    _, buffer = cv2.imencode('.jpg', frame)
+    image_data = base64.b64encode(buffer).decode('utf-8')
 
-    # Remove the temporary image file
-    # os.remove("webcam_photo.jpg")
-    print("[*] Inference complete")
-    
     if is_bird:
-        filename = time.strftime("%Y%m%d-%H%M%S") + ".jpg"
-        with open(filename, "wb") as image_file:
-            image_file.write(image_data)
-        
-    
-    return jsonify(
-        {
-            "is_bird": is_bird,
-            "probability": float(probability),
-            "label": label,
-            "image_data": image_data,
-        }
-    )
+        try:
+            os.makedirs("../found", exist_ok=True)
+            filename = time.strftime("%Y%m%d-%H%M%S") + ".jpg"
+            with open("../found/" + filename, "wb") as image_file:
+                image_file.write(base64.b64decode(image_data))
+            logger.info(f"Bird image saved: {filename}")
+        except Exception as e:
+            logger.error(f"Failed to save bird image: {e}")
 
+    try:
+        os.makedirs("../static", exist_ok=True)
+        with open("../static/latest.jpg", "wb") as image_file:
+            image_file.write(base64.b64decode(image_data))
+        logger.info("Latest image saved")
+
+        with open("../static/label.json", "w") as label_file:
+            json.dump(
+                {"is_bird": is_bird, "probability": float(probability), "label": label},
+                label_file,
+            )
+        logger.info("Label JSON saved")
+    except Exception as e:
+        logger.error(f"Failed to save static files: {e}")
+
+    return
+
+
+@tf.function(reduce_retracing=True)
+def predict_wrapper(model, img_array):
+    return model.predict(img_array)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=9111, host="0.0.0.0")
+    model = InceptionV3(weights="imagenet")
+    while True:
+        camcheck(model)
+
