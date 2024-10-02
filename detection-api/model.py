@@ -21,12 +21,14 @@ logger = logging.getLogger(__name__)
 bird_wordlist = open("labels.txt", "r").readlines()
 bird_wordlist = [e.strip() for e in bird_wordlist]
 
+
 def preprocess_image(img_path):
     img = image.load_img(img_path, target_size=(299, 299))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
     img_array = preprocess_input(img_array)
     return img_array
+
 
 # if a bird is in the top 10 predictions, call that a bird predicted
 # false positives are ok for now
@@ -41,6 +43,7 @@ def detect_bird(model, img_array):
 
     most_probable = decoded_predictions[0]
     return False, most_probable[2], most_probable[1]
+
 
 # take a picture with the webcam, inference, and save accordingly
 def camcheck(model):
@@ -61,7 +64,15 @@ def camcheck(model):
 
     # Add timestamp to the bottom left corner
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cv2.putText(frame, timestamp, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+    cv2.putText(
+        frame,
+        timestamp,
+        (10, frame.shape[0] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 0, 0),
+        1,
+    )
 
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     img = Image.fromarray(rgb_frame).resize((299, 299))
@@ -73,52 +84,36 @@ def camcheck(model):
     is_bird, probability, label = detect_bird(model, img_array)
     logger.info("[*] Inference complete")
 
-    _, buffer = cv2.imencode('.jpg', frame)
-    image_data = base64.b64encode(buffer).decode('utf-8')
+    _, buffer = cv2.imencode(".jpg", frame)
+    image_data = base64.b64encode(buffer).decode("utf-8")
 
     if is_bird:
         try:
             os.makedirs("../found", exist_ok=True)
             filename = time.strftime("%Y%m%d-%H%M%S") + ".mp4"
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            
-            # Set the resolution to 1080p
-            width, height = 1920, 1080
-            
-            out = cv2.VideoWriter(f"../found/{filename}", fourcc, 30.0, (width, height))
-            
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            out = cv2.VideoWriter(f"../found/{filename}", fourcc, 20.0, (frame.shape[1], frame.shape[0]))
+
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
                 cap.open(0)
                 return
-            
-            # Set the capture resolution to 1080p
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-            
-            logger.info("[*] Bird found! Recording video for 10 seconds...")
+
+            logger.info("[*] Bird found! Recording video for 5 seconds...")
             start_time = time.time()
-            while (time.time() - start_time) < 10:  # Record for 10 seconds
+            while (time.time() - start_time) < 5:  # Record for 5 seconds
                 ret, frame = cap.read()
                 if not ret:
                     logger.error("Failed to capture frame from webcam")
                     break
                 out.write(frame)
-            
+
             cap.release()
             out.release()
             logger.info(f"Bird video saved: {filename}")
+            
         except Exception as e:
             logger.error(f"Failed to save bird video: {e}")
-    else:
-        try:
-            os.makedirs("../notfound", exist_ok=True)
-            filename = time.strftime("%Y%m%d-%H%M%S") + ".jpg"
-            with open("../notfound/" + filename, "wb") as image_file:
-                image_file.write(base64.b64decode(image_data))
-            logger.info(f"Not found image saved: {filename}")
-        except Exception as e:
-            logger.error(f"Failed to save notfound image: {e}")
 
     try:
         os.makedirs("../static", exist_ok=True)
@@ -142,8 +137,9 @@ def camcheck(model):
 def predict_wrapper(model, img_array):
     return model.predict(img_array)
 
+
 if __name__ == "__main__":
     model = InceptionV3(weights="imagenet")
     while True:
         camcheck(model)
-        time.sleep(.5)
+        time.sleep(0.5)
