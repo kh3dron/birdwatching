@@ -6,3 +6,7 @@ birds/
 node_modules/
 *.out
 *.log
+
+static/
+found/
+notfound/

@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bird Detection API Display</title>
-    <div id="currentTime"></div>
+    <title>Teal Gardens Birdcam</title>
 
     <style>
         body {
@@ -33,22 +32,13 @@
 
     <script>
 
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString();
-            document.getElementById('currentTime').textContent = `Current Time: ${timeString}`;
-        }
-
-        updateTime();
-        setInterval(updateTime, 1000);
-
         function updateData() {
             fetch('/api/data')
                 .then(response => response.json())
                 .then(data => {
                     console.log('Received data:', data);  // Log received data
-                    if (data.image_data) {
-                        document.getElementById('apiImage').src = `data:image/jpeg;base64,${data.image_data}`;
+                    if (data.image) {
+                        document.getElementById('apiImage').src = data.image;
                         document.getElementById('apiImage').style.display = 'block';
                     } else {
                         console.error('No image data in the response');
@@ -56,8 +46,8 @@
                     }
                     
                     const resultsHtml = `
-                        <p>BIRD: ${data.is_bird ? 'Yes' : 'No'}</p>
-                        <p>Detecting: ${data.label} with a probability of ${(data.probability * 100).toFixed(2)}%</p>
+                        <p>${data.is_bird ? 'Bird!' : 'No Birds.'}</p>
+                        <p>Detecting ${data.label} with a confidence of ${(data.probability * 100).toFixed(0)}%</p>
                     `;
                     document.getElementById('results').innerHTML = resultsHtml;
                     document.getElementById('errorMessage').textContent = '';
@@ -69,7 +59,7 @@
         }
 
         updateData();
-        setInterval(updateData, 2000);
+        setInterval(updateData, 300);
     </script>
 </body>
 </html>
