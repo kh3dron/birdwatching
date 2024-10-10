@@ -23,7 +23,6 @@ flamingo
 little_blue_heron
 american_egret
 bittern
-crane
 limpkin
 european_gallinule
 american_coot

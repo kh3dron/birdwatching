@@ -15,7 +15,7 @@ import base64
 import logging
 import datetime
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 bird_wordlist = open("labels.txt", "r").readlines()
@@ -34,7 +34,7 @@ def preprocess_image(img_path):
 # false positives are ok for now
 def detect_bird(model, img_array):
     predictions = model.predict(img_array)
-    decoded_predictions = decode_predictions(predictions, top=6)[0]
+    decoded_predictions = decode_predictions(predictions, top=20)[0]
 
     for _, label, probability in decoded_predictions:
         if label in bird_wordlist:
@@ -83,6 +83,7 @@ def camcheck(model):
     logger.info("[*] Starting inference...")
     is_bird, probability, label = detect_bird(model, img_array)
     logger.info("[*] Inference complete")
+    print(f"[*] Inference complete, found: {label}")
 
     _, buffer = cv2.imencode(".jpg", frame)
     image_data = base64.b64encode(buffer).decode("utf-8")
@@ -90,7 +91,7 @@ def camcheck(model):
     if is_bird:
         try:
             os.makedirs("../found", exist_ok=True)
-            filename = time.strftime("%Y%m%d-%H:%M:%S") + f"_{label}_" + ".mp4"
+            filename = time.strftime("%Y-%m-%d--%H-%M-%S") + f"-{label}" + ".mp4"
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             out = cv2.VideoWriter(f"../found/{filename}", fourcc, 20.0, (frame.shape[1], frame.shape[0]))
 
