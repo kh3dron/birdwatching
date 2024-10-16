@@ -15,7 +15,7 @@ import base64
 import logging
 import datetime
 
-logging.basicConfig(level=logging.CRITICAL)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bird_wordlist = open("labels.txt", "r").readlines()
@@ -50,13 +50,16 @@ def camcheck(model):
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        cap.open(0)
+        logger.error("Failed to open camera. Please check if the camera is connected and not in use by another application.")
         return
-    ret, frame = cap.read()
-    if not ret:
-        logger.error("Failed to capture frame from webcam")
-        return
-    cap.release()
+
+    try:
+        ret, frame = cap.read()
+        if not ret:
+            logger.error("Failed to capture frame from webcam")
+            return
+    finally:
+        cap.release()
 
     # decrease brightness, helps bright sunlight effect. TODO fix better
     brightness = 0.9
