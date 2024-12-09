@@ -30,17 +30,17 @@ def preprocess_image(img_path):
     return img_array
 
 
-# if a bird is in the top 10 predictions, call that a bird predicted
-# false positives are ok for now
+# Check if there's a bird anywhere in the image
 def detect_bird(model, img_array):
     predictions = model.predict(img_array)
     decoded_predictions = decode_predictions(predictions, top=20)[0]
 
     for _, label, probability in decoded_predictions:
         if label in bird_wordlist:
-            print(f"[***] bird detected: {label}")
+            print(f"[***] Bird detected: {label} (probability: {probability:.2f})")
             return True, probability, label
 
+    # If no bird is found, return the most probable class
     most_probable = decoded_predictions[0]
     return False, most_probable[2], most_probable[1]
 
